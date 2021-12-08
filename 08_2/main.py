@@ -1,4 +1,5 @@
 import itertools as it
+from typing import Mapping
 
 
 class Digit:
@@ -28,9 +29,12 @@ class Digit:
     def __eq__(self, other):
         return self.s == other.s
 
+    def __lt__(self, other):
+        return self.s < other.s
+
 
 class ValidDigit(Digit):
-    digit_configs = {
+    digit_to_value = {
         "abcdefg": 8,
         "abcefg": 0,
         "abdefg": 6,
@@ -42,38 +46,53 @@ class ValidDigit(Digit):
         "acf": 7,
         "cf": 1,
     }
+    value_to_digit = {
+        value: digit for digit, value in digit_to_value.items()
+    }
 
     def __init__(self, s):
         super().__init__(s)
-        if self.s not in self.digit_configs.keys():
+        if self.s not in self.digit_to_value.keys():
             raise Exception(f"Invalid digit {self.s}")
 
     @classmethod
     def is_valid(cls, s):
-        return ''.join(sorted(s)) in cls.digit_configs.keys()
+        return ''.join(sorted(s)) in cls.digit_to_value.keys()
 
     def decode(self):
-        return self.digit_configs[self.s]
+        return self.digit_to_value[self.s]
 
 
 class DigitMapping:
     def __init__(self, mapping):
         self.mapping = mapping
 
+    def _apply_mapping(self, scrambled_digit):
+        return ''.join(self.mapping[c] for c in scrambled_digit.s)
+
     def apply_mapping(self, scrambled_digit):
-        s = ''.join(self.mapping[c] for c in scrambled_digit.s)
+        s = self._apply_mapping(scrambled_digit)
         if ValidDigit.is_valid(s):
             return ValidDigit(s)
         return None
 
+    def __repr__(self):
+        return str(self.mapping)
+
 
 class DigitConfig:
+
     def __init__(self, seq):
+        self.original_seq = seq
         reference, output = seq.split(" | ")
         self.reference = list(map(Digit, reference.split()))
         self.output = list(map(Digit, output.split()))
 
+    def __repr__(self):
+        return self.original_seq
+
     def decode(self):
+        print(f"Decoding {self}")
         chars = "abcdefg"
         for m in it.permutations(chars, 7):
             mapping = DigitMapping({o: g for o, g in zip(m, chars)})
@@ -83,11 +102,11 @@ class DigitConfig:
             is_consistent = all(m for m in mapped)
             if not is_consistent:
                 continue
-            
+
             mapped_output = [
                 mapping.apply_mapping(o).decode()
                 for o in self.output
-                ]
+            ]
             return int(''.join(map(str, mapped_output)))
 
         raise Exception("No mapping found")
